@@ -24,7 +24,8 @@ SOCKET serverSocket;
 SOCKET newClient;
 SOCKADDR_IN clientAddr;
 
-std::vector<clientSocket*> clientSockets;
+fd_set master;
+timeval zeroTimeout;
 
 int newID = 0;
 
@@ -42,16 +43,18 @@ void getNewClients()
 			addingClient = true;
 			std::cout << "Client connected!" << std::endl;
 
-			// generate client information
+			// generate client information - unused for now
 			clientSocket* newClientSocket = new clientSocket();
 			newClientSocket->socket = newClient;
 			newClientSocket->ID = newID;
 			newID++;
 
 			// add new client to list of clients
-			clientSockets.emplace_back(newClientSocket);
+			FD_SET(newClient, &master);
+
+			//clientSockets.emplace_back(newClientSocket);
 			std::cout << "Client added!" << std::endl;
-			std::cout << "Number of connected clients: " << clientSockets.size() << std::endl;
+			std::cout << "Number of connected clients: " << std::endl;
 
 			// allow access to the clientSockets vector again
 			addingClient = false;
@@ -97,6 +100,9 @@ int main()
 	bind(serverSocket, (SOCKADDR*)&serverAddr, sizeof(serverAddr)); // bind the socket to the address
 	listen(serverSocket, 0); // listen to incoming connections
 
+	FD_ZERO(&master);
+	FD_SET(serverSocket, &master);
+
 	// create thread for getting new client connections
 	std::thread newConnectionThread(getNewClients);
 
@@ -109,12 +115,26 @@ int main()
 		// listen to each client, as long as the other thread isn't editing the vector
 		if (!addingClient)
 		{
-			for (auto client : clientSockets)
+			fd_set copy = master;
+
+			int socketCount = select(0, &copy, nullptr, nullptr, &zeroTimeout);
+
+			for (int i = 0; i < socketCount; i++)
 			{
+				SOCKET sock = copy.fd_array[i];
+
 				memset(buffer, 0, sizeof(buffer)); // clear buffer, to be safe
 
-				// get information from the client
-				if (recv(client->socket, buffer, sizeof(buffer), 0))
+				std::cout << "Listening to clients!";
+				int bytesIn = 0;
+				if(sock != serverSocket)
+					bytesIn = recv(sock, buffer, 1024, 0); // get bytes from client
+
+				if (bytesIn <= 0)
+				{
+					// nothing recieved from client
+				}
+				else
 				{
 					std::cout << "Buffer: " << buffer << std::endl;
 
@@ -128,14 +148,12 @@ int main()
 					// do something with what we have!
 					if (commandType == "DISCONNECT")
 					{
-						std::cout << "Client disconnected : " << client->ID << std::endl;
+						std::cout << "Client disconnected : " << std::endl;
 
 						// disconnect the client
-						clientSockets.erase(std::remove(clientSockets.begin(), clientSockets.end(), client));
-						delete client;
-						client = nullptr;
+						FD_CLR(sock, &master);
 
-						std::cout << "Number of connected clients: " << clientSockets.size() << std::endl;
+						std::cout << "Number of connected clients: " << copy.fd_count << std::endl;
 					}
 					else if (commandType == "MESSAGE")
 					{
