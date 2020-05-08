@@ -23,7 +23,8 @@ cMain::cMain() : wxFrame(nullptr, wxID_ANY, "Radiator Network", wxPoint(30,30), 
 
 cMain::~cMain()
 {
-	std::string disconnectString = "DISCONNECT";
+	std::string disconnectString = "<DISCONNECT>";
+	disconnectString.append("</DISCONNECT>");
 	send(serverSocket, disconnectString.c_str(), disconnectString.length(), 0);
 
 	closesocket(serverSocket);
@@ -45,7 +46,11 @@ void cMain::TestForIncomingMessages()
 void cMain::OnButtonClicked(wxCommandEvent& evt)
 {
 	chatHistory->AppendString(textInput->GetValue());
-	wxString msg = textInput->GetValue();
+
+	std::string msg;
+	msg.append("<MESSAGE>");
+	msg.append(textInput->GetValue().ToStdString());
+	msg.append("</MESSAGE>");
 
 	// send the message to the server
 	send(serverSocket, msg.c_str(), msg.length(), 0);

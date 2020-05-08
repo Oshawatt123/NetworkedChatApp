@@ -7,6 +7,8 @@
 #include <thread>
 #include <algorithm>
 
+#include "tinyxml2.h"
+
 #pragma comment(lib, "Ws2_32.lib")
 
 struct clientSocket
@@ -26,6 +28,7 @@ std::vector<clientSocket*> clientSockets;
 
 int newID = 0;
 
+// this is run on a different thread
 void getNewClients()
 {
 	while (serverRunning)
@@ -48,6 +51,9 @@ void getNewClients()
 			// add new client to list of clients
 			clientSockets.emplace_back(newClientSocket);
 			std::cout << "Client added!" << std::endl;
+			std::cout << "Number of connected clients: " << clientSockets.size() << std::endl;
+
+			// allow access to the clientSockets vector again
 			addingClient = false;
 		}
 	}
@@ -94,33 +100,44 @@ int main()
 	// create thread for getting new client connections
 	std::thread newConnectionThread(getNewClients);
 
+	tinyxml2::XMLDocument doc;
+
 	while (true) // ew
 	{
 		char buffer[1024]; // data in buffer
 
-		// listen to each client
+		// listen to each client, as long as the other thread isn't editing the vector
 		if (!addingClient)
 		{
 			for (auto client : clientSockets)
 			{
 				memset(buffer, 0, sizeof(buffer)); // clear buffer, to be safe
 
+				// get information from the client
 				if (recv(client->socket, buffer, sizeof(buffer), 0))
 				{
-					std::string bufferString = buffer;
+					std::cout << "Buffer: " << buffer << std::endl;
+
+					// parse the buffer
+					doc.Parse(buffer, sizeof(buffer));
+					std::cout << doc.FirstChildElement()->Name() << std::endl;
+
+					// get the first element, the command type
+					std::string commandType = doc.FirstChildElement()->Name();
+
 					// do something with what we have!
-					if (bufferString == "DISCONNECT")
+					if (commandType == "DISCONNECT")
 					{
 						std::cout << "Client disconnected : " << client->ID << std::endl;
-						std::cout << clientSockets.size() << std::endl;
+
 						// disconnect the client
 						clientSockets.erase(std::remove(clientSockets.begin(), clientSockets.end(), client));
 						delete client;
 						client = nullptr;
 
-						std::cout << clientSockets.size() << std::endl;
+						std::cout << "Number of connected clients: " << clientSockets.size() << std::endl;
 					}
-					else
+					else if (commandType == "MESSAGE")
 					{
 						std::cout << buffer << std::endl;
 					}
@@ -138,14 +155,3 @@ int main()
 
 	return 0;
 }
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
