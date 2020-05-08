@@ -23,6 +23,9 @@ cMain::cMain() : wxFrame(nullptr, wxID_ANY, "Radiator Network", wxPoint(30,30), 
 
 cMain::~cMain()
 {
+	std::string disconnectString = "DISCONNECT";
+	send(serverSocket, disconnectString.c_str(), disconnectString.length(), 0);
+
 	closesocket(serverSocket);
 	WSACleanup();
 }
