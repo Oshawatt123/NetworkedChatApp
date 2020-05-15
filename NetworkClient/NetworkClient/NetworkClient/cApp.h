@@ -1,6 +1,6 @@
 #pragma once
 
-#include "wx/wx.h"
+//#include "wx/wx.h"
 
 #include "cMain.h"
 
@@ -15,6 +15,6 @@ private:
 
 public:
 	bool OnInit();
-	void OnIdle();
+	void onIdle(wxIdleEvent& event);
 };
 

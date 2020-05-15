@@ -23,7 +23,6 @@ bool cApp::OnInit()
 	return true;
 }
 
-void cApp::OnIdle()
+void cApp::onIdle(wxIdleEvent& event)
 {
-	frame1->TestForIncomingMessages();
 }

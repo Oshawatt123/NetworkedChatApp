@@ -117,6 +117,7 @@ int main()
 		{
 			fd_set copy = master;
 
+
 			int socketCount = select(0, &copy, nullptr, nullptr, &zeroTimeout);
 
 			for (int i = 0; i < socketCount; i++)
@@ -125,8 +126,10 @@ int main()
 
 				memset(buffer, 0, sizeof(buffer)); // clear buffer, to be safe
 
-				std::cout << "Listening to clients!";
 				int bytesIn = 0;
+
+				// make sure the socket isn't the server socket. This can be used for single threaded networking
+				// but I already have a seperate thread for accepting clients so leaving it like that
 				if(sock != serverSocket)
 					bytesIn = recv(sock, buffer, 1024, 0); // get bytes from client
 
@@ -136,8 +139,6 @@ int main()
 				}
 				else
 				{
-					std::cout << "Buffer: " << buffer << std::endl;
-
 					// parse the buffer
 					doc.Parse(buffer, sizeof(buffer));
 					std::cout << doc.FirstChildElement()->Name() << std::endl;
@@ -153,11 +154,28 @@ int main()
 						// disconnect the client
 						FD_CLR(sock, &master);
 
-						std::cout << "Number of connected clients: " << copy.fd_count << std::endl;
+						// minus 1 because the serverSocket is in the set
+						std::cout << "Number of connected clients: " << copy.fd_count -1 << std::endl;
 					}
 					else if (commandType == "MESSAGE")
 					{
-						std::cout << buffer << std::endl;
+						std::cout << "Message from " << copy.fd_array[i] << ": " << doc.FirstChildElement()->GetText() << std::endl;
+						std::string message = doc.FirstChildElement()->GetText();
+						std::string msg = "<MESSAGE>" + message + "</MESSAGE>";
+
+						memcpy(buffer, msg.c_str(), msg.length());
+
+						//broadcast to other users
+						std::cout << "Sending message to other users" << std::endl;
+						for (int j = 0; j < master.fd_count; j++)
+						{
+							// dont send to the client who sent the data in the first place and dont send to ourselves
+							if (master.fd_array[j] != copy.fd_array[i] && master.fd_array[j] != serverSocket)
+							{
+								send(master.fd_array[j], buffer, sizeof(buffer), 0);
+								std::cout << "Message sent to: " << master.fd_array[j] << std::endl;
+							}
+						}
 					}
 				}
 			}
