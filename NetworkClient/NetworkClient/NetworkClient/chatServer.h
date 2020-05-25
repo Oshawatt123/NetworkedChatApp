@@ -25,8 +25,13 @@ static const int NO_MESSAGE		= 1;
 static const int SV_MESSAGE		= 2;
 static const int SV_RESPONSE	= 3;
 
-static const std::string PSS_OK			= "0";
-static const std::string INVALID_LOGIN	= "1";
+static const std::string PSS_OK = "0";
+static const std::string ERR_ROOMINVALID = "1";
+static const std::string ERR_ROOMFULL = "2";
+static const std::string ERR_NEEDMOREPARAMS = "3";
+static const std::string ERR_TOOMANYPARAMS = "4";
+static const std::string ERR_INVALIDLOGIN = "5";
+static const std::string ERR_ACCESS = "6";
 
 class chatServer
 {

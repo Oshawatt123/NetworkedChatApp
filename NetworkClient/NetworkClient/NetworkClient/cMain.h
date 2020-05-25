@@ -64,6 +64,7 @@ public:
 
 	bool waitingForLoginResponse = false;
 	bool loginValid = false;
+	bool waitingForRegisterResponse = false;
 
 	// debug jazz
 	wxListBox* debugBox = nullptr;

@@ -17,30 +17,30 @@ cMain::cMain() :	wxFrame(nullptr, wxID_ANY, "Radiator Network", wxPoint(30,30), 
 
 	// connect panel initialization
 	connectPanel = new wxPanel(this);
-	IPText = new wxStaticText(connectPanel, wxID_ANY, "IP", wxPoint(10, 50));
+	IPText = new wxStaticText(connectPanel, wxID_ANY, "IP", wxPoint(10, 50), wxSize(100, 20));
 	IPInput = new wxTextCtrl(connectPanel, wxID_ANY, "", wxPoint(10, 70), wxSize(300, 30));
-	portText = new wxStaticText(connectPanel, wxID_ANY, "Port", wxPoint(10, 90));
-	portInput = new wxTextCtrl(connectPanel, wxID_ANY, "", wxPoint(10, 110), wxSize(300, 30));
-	connectButton = new wxButton(connectPanel, 10001, "Connect", wxPoint(10, 130), wxSize(150, 50));
+	portText = new wxStaticText(connectPanel, wxID_ANY, "Port", wxPoint(10, 110), wxSize(100, 20));
+	portInput = new wxTextCtrl(connectPanel, wxID_ANY, "", wxPoint(10, 130), wxSize(300, 30));
+	connectButton = new wxButton(connectPanel, 10001, "Connect", wxPoint(10, 170), wxSize(150, 50));
 
 	connectPanel->SetSize(this->GetClientSize());
 
 	// login panel initialization
 	loginPanel = new wxPanel(this);
 
-	usernameText = new wxStaticText(loginPanel, wxID_ANY, "Username", wxPoint(10, 50));
-	usernameInput = new wxTextCtrl(loginPanel, wxID_ANY, "", wxPoint(10, 70), wxSize(300, 30));
-	passwordText = new wxStaticText(loginPanel, wxID_ANY, "Password", wxPoint(10, 90));
-	passwordInput = new wxTextCtrl(loginPanel, wxID_ANY, "", wxPoint(10, 110), wxSize(300, 30));
-	loginButton = new wxButton(loginPanel, 10002, "Login", wxPoint(10, 130), wxSize(150, 50));
+	usernameText = new wxStaticText(loginPanel, wxID_ANY, "Username", wxPoint(10, 50), wxSize(100, 20));
+	usernameInput = new wxTextCtrl(loginPanel, wxID_ANY, "", wxPoint(10, 70), wxSize(150, 30));
+	passwordText = new wxStaticText(loginPanel, wxID_ANY, "Password", wxPoint(10, 110), wxSize(100, 20));
+	passwordInput = new wxTextCtrl(loginPanel, wxID_ANY, "", wxPoint(10, 130), wxSize(150, 30));
+	loginButton = new wxButton(loginPanel, 10002, "Login", wxPoint(10, 170), wxSize(150, 50));
 
-	usernameNewText = new wxStaticText(loginPanel, wxID_ANY, "Username", wxPoint(100, 50));
-	usernameNewInput = new wxTextCtrl(loginPanel, wxID_ANY, "", wxPoint(100, 70), wxSize(300, 30));
-	passwordNewText = new wxStaticText(loginPanel, wxID_ANY, "Password", wxPoint(100, 90));
-	passwordNewInput = new wxTextCtrl(loginPanel, wxID_ANY, "", wxPoint(100, 110), wxSize(300, 30));
-	passwordCheckText = new wxStaticText(loginPanel, wxID_ANY, "Password verification", wxPoint(100, 90));
-	passwordCheckInput = new wxTextCtrl(loginPanel, wxID_ANY, "", wxPoint(100, 110), wxSize(300, 30));
-	registerButton = new wxButton(loginPanel, 10003, "Register", wxPoint(100, 130), wxSize(150, 50));
+	usernameNewText = new wxStaticText(loginPanel, wxID_ANY, "Username", wxPoint(200, 50), wxSize(100, 20));
+	usernameNewInput = new wxTextCtrl(loginPanel, wxID_ANY, "", wxPoint(200, 70), wxSize(150, 30));
+	passwordNewText = new wxStaticText(loginPanel, wxID_ANY, "Password", wxPoint(200, 110), wxSize(100, 20));
+	passwordNewInput = new wxTextCtrl(loginPanel, wxID_ANY, "", wxPoint(200, 130), wxSize(150, 30));
+	passwordCheckText = new wxStaticText(loginPanel, wxID_ANY, "Password verification", wxPoint(200, 170), wxSize(200, 20));
+	passwordCheckInput = new wxTextCtrl(loginPanel, wxID_ANY, "", wxPoint(200, 190), wxSize(150, 30));
+	registerButton = new wxButton(loginPanel, 10003, "Register", wxPoint(200, 230), wxSize(150, 50));
 
 	loginPanel->SetSize(this->GetClientSize());
 
@@ -53,7 +53,7 @@ cMain::cMain() :	wxFrame(nullptr, wxID_ANY, "Radiator Network", wxPoint(30,30), 
 	chatPanel->SetSize(this->GetClientSize());
 
 	debugBox = new wxListBox(this, wxID_ANY, wxPoint(410, 110), wxSize(300, 300));
-	//socketCountText = new wxStaticText(this, 10101, "Notice me senpai", wxPoint(410, 10), wxSize(300, 300));
+	//socketCountText = new wxStaticText(this, 10101, "Notice me senpai", wxPoint(410, 10));
 	secondDebugText = new wxStaticText(this, 10101, "Notice me senpai", wxPoint(410, 10), wxSize(300, 10));
 
 	connectPanel->Show();
@@ -102,6 +102,17 @@ void cMain::TestForIncomingMessages()
 				loginPanel->Hide();
 				chatPanel->Show();
 			}
+			else if (waitingForRegisterResponse)
+			{
+				waitingForRegisterResponse = false;
+				debugBox->Append("Registration successful! Safe to login.");
+			}
+		}
+		else if (stringbuffer == ERR_INVALIDLOGIN)
+		{
+			waitingForLoginResponse = false;
+			waitingForRegisterResponse = false;
+			debugBox->Append("Unsuccessful login attempt. Try again");
 		}
 		else
 		{
@@ -129,6 +140,7 @@ void cMain::OnConnectButtonClicked(wxCommandEvent& evt)
 	if (chatServer::Instance()->connectToServer(iptoconnect, porttoconnect) == SOCKET_ERROR)
 	{
 		// show a dialog or summin saying how there was no good connection
+		debugBox->Append("[ERR] Error connecting to server. If the issue persists, the server is likely down. Try localhosting you own.");
 	}
 	else
 	{
@@ -145,6 +157,9 @@ void cMain::OnLoginButtonClicked(wxCommandEvent& evt)
 	if (userName == "" || password == "")
 	{
 		// show a dialog box to say you did goof
+		debugBox->Append("Please input something into the following fields:");
+		debugBox->Append("     Username");
+		debugBox->Append("     Password");
 	}
 	else
 	{
@@ -152,9 +167,6 @@ void cMain::OnLoginButtonClicked(wxCommandEvent& evt)
 
 		loginPacket.append("<username>" + userName + "</username>");
 		loginPacket.append("<password>" + password + "</password>");
-
-		debugBox->Append("<username>" + userName + "</username>");
-		debugBox->Append("<password>" + password + "</password>");
 
 		chatServer::Instance()->sendMessage(RAD_LOGIN, loginPacket);
 		waitingForLoginResponse = true;
@@ -164,6 +176,29 @@ void cMain::OnLoginButtonClicked(wxCommandEvent& evt)
 
 void cMain::OnRegisterButtonClicked(wxCommandEvent& evt)
 {
+	std::string userName = usernameNewInput->GetValue().ToStdString();
+	std::string password = passwordNewInput->GetValue().ToStdString();
+	std::string passwordCheck = passwordCheckInput->GetValue().ToStdString();
+	if (userName == "" || password == "" || passwordCheck == "")
+	{
+		// show a dialog box to say you did goof
+		debugBox->Append("Please input something into the following fields:");
+		debugBox->Append("     Username");
+		debugBox->Append("     Password");
+		debugBox->Append("     Password verification");
+	}
+	else
+	{
+		std::string registerPacket = "";
+
+		registerPacket.append("<username>" + userName + "</username>");
+		registerPacket.append("<password>" + password + "</password>");
+		registerPacket.append("<passwordCheck>" + passwordCheck + "</passwordCheck>");
+
+		chatServer::Instance()->sendMessage(RAD_REGISTER, registerPacket);
+		debugBox->Append("Waiting for confirmation of registration...");
+		waitingForRegisterResponse = true;
+	}
 }
 
 void cMain::OnButtonClicked(wxCommandEvent& evt)

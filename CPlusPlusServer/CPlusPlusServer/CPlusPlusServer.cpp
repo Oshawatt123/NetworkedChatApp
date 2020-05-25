@@ -200,6 +200,14 @@ int main()
 							newClient->password = password;
 
 							registeredClients.emplace_back(newClient);
+
+							// send OK
+							memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
+							std::string response = WrapTextInElement(std::to_string(PSS_OK), "ACRE");
+							memcpy(buffer, response.c_str(), response.length());
+
+							send(sock, buffer, sizeof(buffer), 0);
+							std::cout << "RESPONSE SENT: " << buffer << std::endl;
 						}
 						else
 						{
@@ -243,7 +251,7 @@ int main()
 							// say screw you!
 							std::string response = WrapTextInElement(std::to_string(ERR_INVALIDLOGIN), "ACRE");
 							memcpy(buffer, response.c_str(), response.length());
-							send(master.fd_array[i], buffer, sizeof(buffer), 0);
+							send(sock, buffer, sizeof(buffer), 0);
 						}
 					}
 				}
