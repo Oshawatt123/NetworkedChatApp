@@ -13,12 +13,14 @@ cApp::~cApp()
 	// then we will get fatal errors
 
 	// wxWidgets will delete things when it is safe to do so
+
+	chatServer::Instance()->Release();
 }
 
 bool cApp::OnInit()
 {
-	frame1 = new cMain();
-	frame1->Show();
+	mainFrame = new cMain();
+	mainFrame->Show();
 
 	return true;
 }

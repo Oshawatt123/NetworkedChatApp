@@ -9,6 +9,9 @@
 
 #include "tinyxml2.h"
 
+#include "Client.h"
+#include "Room.h"
+
 #pragma comment(lib, "Ws2_32.lib")
 
 struct clientSocket
@@ -28,6 +31,17 @@ fd_set master;
 timeval zeroTimeout;
 
 int newID = 0;
+
+std::vector<Client*> registeredClients;
+std::vector<Client*> activeClients;
+
+static const int PSS_OK = 0;
+static const int ERR_ROOMINVALID = 1;
+static const int ERR_ROOMFULL = 2;
+static const int ERR_NEEDMOREPARAMS = 3;
+static const int ERR_TOOMANYPARAMS = 4;
+static const int ERR_INVALIDLOGIN = 5;
+static const int ERR_ACCESS = 6;
 
 // this is run on a different thread
 void getNewClients()
@@ -62,22 +76,10 @@ void getNewClients()
 	}
 }
 
-		//recv(clientSocket, buffer, sizeof(buffer), 0); // read data from the incoming connection, with no flags bc we dont care what it is
-				 //system(buffer);
-
-				//std::cout << buffer << std::endl;
-
-				//create response from server
-				//std::string responseText = "response from server: ";
-				//responseText += buffer;
-
-				//memcpy(buffer, responseText.c_str(), responseText.length()); // copy the server response into our buffer
-
-				//send(clientSocket, buffer, sizeof(buffer), 0); // send our buffer to the client's socket
-
-				//closesocket(clientSocket); // close the connection
-
-				//std::cout << "Client Disconnected" << std::endl;
+std::string WrapTextInElement(std::string textToWrap, std::string element)
+{
+	return "<" + element + ">" + textToWrap + "</" + element + ">";
+}
 
 int main()
 {
@@ -108,6 +110,12 @@ int main()
 
 	tinyxml2::XMLDocument doc;
 
+	Client* admin = new Client();
+	admin->username = "admin";
+	admin->password = "radiator";
+
+	registeredClients.emplace_back(admin);
+
 	while (true) // ew
 	{
 		char buffer[1024]; // data in buffer
@@ -122,7 +130,7 @@ int main()
 
 			for (int i = 0; i < socketCount; i++)
 			{
-				SOCKET sock = copy.fd_array[i];
+				SOCKET sock = copy.fd_array[i]; // the socket we are listening to
 
 				memset(buffer, 0, sizeof(buffer)); // clear buffer, to be safe
 
@@ -139,6 +147,7 @@ int main()
 				}
 				else
 				{
+					std::cout << buffer << std::endl;
 					// parse the buffer
 					doc.Parse(buffer, sizeof(buffer));
 					std::cout << doc.FirstChildElement()->Name() << std::endl;
@@ -175,6 +184,66 @@ int main()
 								send(master.fd_array[j], buffer, sizeof(buffer), 0);
 								std::cout << "Message sent to: " << master.fd_array[j] << std::endl;
 							}
+						}
+					}
+					else if (commandType == "CREATE_USER")
+					{
+						std::string username = doc.FirstChildElement("CREATE_USER")->FirstChildElement("username")->GetText();
+						std::string password = doc.FirstChildElement("CREATE_USER")->FirstChildElement("password")->GetText();
+						std::string passwordCheck = doc.FirstChildElement("CREATE_USER")->FirstChildElement("passwordCheck")->GetText();
+
+						// check password
+						if (password == passwordCheck)
+						{
+							Client* newClient = new Client();
+							newClient->username = username;
+							newClient->password = password;
+
+							registeredClients.emplace_back(newClient);
+						}
+						else
+						{
+							std::string response = WrapTextInElement(std::to_string(ERR_INVALIDLOGIN), "ACRE");
+							memcpy(buffer, response.c_str(), response.length());
+							send(master.fd_array[i], buffer, sizeof(buffer), 0);
+						}
+					}
+					else if (commandType == "LOGIN")
+					{
+						bool loginFound = false;
+						std::string clientUsername = doc.FirstChildElement("LOGIN")->FirstChildElement("username")->GetText();
+						std::string clientPassword = doc.FirstChildElement("LOGIN")->FirstChildElement("password")->GetText();
+
+						std::cout << "LOGIN ATTEMPT => " << " Socket: " << sock << " Username: " << clientUsername << " Password: " << clientPassword << std::endl;
+
+						// check all registered users
+						for (auto user : registeredClients)
+						{
+							if (user->username == clientUsername)
+							{
+								if (user->password == clientPassword)
+								{
+									loginFound = true;
+									activeClients.emplace_back(user);
+									std::cout << "LOGIN SUCCESS => " << " Socket: " << sock << " Username: " << clientUsername << " Password: " << clientPassword << std::endl;
+
+									// send command to allow login
+
+									memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
+									std::string response = WrapTextInElement(std::to_string(PSS_OK), "ACRE");
+									memcpy(buffer, response.c_str(), response.length());
+
+									send(sock, buffer, sizeof(buffer), 0);
+									std::cout << "RESPONSE SENT: " << buffer << std::endl;
+								}
+							}
+						}
+						if (!loginFound)
+						{
+							// say screw you!
+							std::string response = WrapTextInElement(std::to_string(ERR_INVALIDLOGIN), "ACRE");
+							memcpy(buffer, response.c_str(), response.length());
+							send(master.fd_array[i], buffer, sizeof(buffer), 0);
 						}
 					}
 				}

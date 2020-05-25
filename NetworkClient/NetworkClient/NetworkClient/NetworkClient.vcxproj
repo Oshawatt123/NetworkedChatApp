@@ -20,12 +20,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cApp.cpp" />
+    <ClCompile Include="cConnectionScreen.cpp" />
+    <ClCompile Include="chatServer.cpp" />
     <ClCompile Include="cMain.cpp" />
+    <ClCompile Include="testFrame.cpp" />
     <ClCompile Include="tinyxml2.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cApp.h" />
+    <ClInclude Include="cConnectionScreen.h" />
+    <ClInclude Include="chatServer.h" />
     <ClInclude Include="cMain.h" />
+    <ClInclude Include="testFrame.h" />
     <ClInclude Include="tinyxml2.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

@@ -1,111 +1,199 @@
 #include "cMain.h"
 
 wxBEGIN_EVENT_TABLE(cMain, wxFrame)
-	EVT_BUTTON(10001, OnButtonClicked)
+	EVT_BUTTON(10001, OnConnectButtonClicked)
+	EVT_BUTTON(10002, OnLoginButtonClicked)
+	EVT_BUTTON(10003, OnRegisterButtonClicked)
+	EVT_BUTTON(10005, OnButtonClicked)
 	EVT_TIMER(TIMER_ID, cMain::OnTimer)
+	EVT_KEY_DOWN(ParseKeyDown)
 wxEND_EVENT_TABLE()
 
 cMain::cMain() :	wxFrame(nullptr, wxID_ANY, "Radiator Network", wxPoint(30,30), wxSize(800, 600)),
 					tim(this, TIMER_ID)
 {
-	WSAStartup(MAKEWORD(2, 0), &WSAData);
-	serverSocket = socket(AF_INET, SOCK_STREAM, 0); // create socket to the server;
 
-	serverAddr.sin_addr.s_addr = inet_addr(IP.c_str()); // set server address
-	serverAddr.sin_family = AF_INET;
-	serverAddr.sin_port = htons(7777);
+	panelSizer = new wxBoxSizer(wxHORIZONTAL);
 
-	// test connection with server
-	pingResult = connect(serverSocket, (SOCKADDR*)& serverAddr, sizeof(serverAddr));
+	// connect panel initialization
+	connectPanel = new wxPanel(this);
+	IPText = new wxStaticText(connectPanel, wxID_ANY, "IP", wxPoint(10, 50));
+	IPInput = new wxTextCtrl(connectPanel, wxID_ANY, "", wxPoint(10, 70), wxSize(300, 30));
+	portText = new wxStaticText(connectPanel, wxID_ANY, "Port", wxPoint(10, 90));
+	portInput = new wxTextCtrl(connectPanel, wxID_ANY, "", wxPoint(10, 110), wxSize(300, 30));
+	connectButton = new wxButton(connectPanel, 10001, "Connect", wxPoint(10, 130), wxSize(150, 50));
 
-	FD_ZERO(&master);
-	FD_SET(serverSocket, &master);
+	connectPanel->SetSize(this->GetClientSize());
 
-	button1 = new wxButton(this, 10001, "Click Me!", wxPoint(10, 10), wxSize(150, 50));
-	textInput = new wxTextCtrl(this, wxID_ANY, "", wxPoint(10, 70), wxSize(300, 30));
-	chatHistory = new wxListBox(this, wxID_ANY, wxPoint(10, 110), wxSize(300, 300));
+	// login panel initialization
+	loginPanel = new wxPanel(this);
+
+	usernameText = new wxStaticText(loginPanel, wxID_ANY, "Username", wxPoint(10, 50));
+	usernameInput = new wxTextCtrl(loginPanel, wxID_ANY, "", wxPoint(10, 70), wxSize(300, 30));
+	passwordText = new wxStaticText(loginPanel, wxID_ANY, "Password", wxPoint(10, 90));
+	passwordInput = new wxTextCtrl(loginPanel, wxID_ANY, "", wxPoint(10, 110), wxSize(300, 30));
+	loginButton = new wxButton(loginPanel, 10002, "Login", wxPoint(10, 130), wxSize(150, 50));
+
+	usernameNewText = new wxStaticText(loginPanel, wxID_ANY, "Username", wxPoint(100, 50));
+	usernameNewInput = new wxTextCtrl(loginPanel, wxID_ANY, "", wxPoint(100, 70), wxSize(300, 30));
+	passwordNewText = new wxStaticText(loginPanel, wxID_ANY, "Password", wxPoint(100, 90));
+	passwordNewInput = new wxTextCtrl(loginPanel, wxID_ANY, "", wxPoint(100, 110), wxSize(300, 30));
+	passwordCheckText = new wxStaticText(loginPanel, wxID_ANY, "Password verification", wxPoint(100, 90));
+	passwordCheckInput = new wxTextCtrl(loginPanel, wxID_ANY, "", wxPoint(100, 110), wxSize(300, 30));
+	registerButton = new wxButton(loginPanel, 10003, "Register", wxPoint(100, 130), wxSize(150, 50));
+
+	loginPanel->SetSize(this->GetClientSize());
+
+	// chat panel initialization
+	chatPanel = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxDefaultSize);
+	button1 = new wxButton(chatPanel, 10005, "Send", wxPoint(330, 20), wxSize(50, 30));
+	textInput = new wxTextCtrl(chatPanel, wxID_ANY, "", wxPoint(10, 20), wxSize(300, 30));
+	chatHistory = new wxListBox(chatPanel, wxID_ANY, wxPoint(10, 70), wxSize(300, 300));
+
+	chatPanel->SetSize(this->GetClientSize());
+
 	debugBox = new wxListBox(this, wxID_ANY, wxPoint(410, 110), wxSize(300, 300));
-	socketCountText = new wxStaticText(this, 10101, "Notice me senpai", wxPoint(410, 10), wxSize(300, 300));
+	//socketCountText = new wxStaticText(this, 10101, "Notice me senpai", wxPoint(410, 10), wxSize(300, 300));
+	secondDebugText = new wxStaticText(this, 10101, "Notice me senpai", wxPoint(410, 10), wxSize(300, 10));
 
-	tim.Start(1);
+	connectPanel->Show();
+	loginPanel->Hide();
+	chatPanel->Hide();
+
+	tim.Start(16);
 }
 
 cMain::~cMain()
 {
-	std::string disconnectString = "<DISCONNECT>";
-	disconnectString.append("</DISCONNECT>");
-	send(serverSocket, disconnectString.c_str(), disconnectString.length(), 0);
+	chatServer::Instance()->sendMessage(RAD_DISCONNECT);
 
-	closesocket(serverSocket);
-	WSACleanup();
+	delete panelSizer;
+	panelSizer = nullptr;
 }
 
 void cMain::TestForIncomingMessages()
 {
-	socketCountText->SetLabel("WHYYYY");
-	debugBox->AppendString("Testing....");
+	//socketCountText->SetLabel("WHYYYY");
+	//debugBox->AppendString("Testing....");
+	std::string stringbuffer = "";
 
-	if (pingResult == SOCKET_ERROR)
+	int response = chatServer::Instance()->checkForMessage(stringbuffer);
+
+	secondDebugText->SetLabel(stringbuffer);
+	if (response == NO_MESSAGE || response == NO_CONNECTION)
 	{
-		// failed to connect with server!
-		socketCountText->SetLabel("Failed to connect to server!");
+
+	}
+	else if (response == SV_MESSAGE)
+	{
+		chatHistory->Append(stringbuffer);
+		debugBox->Append("SV_MESSAGE");
+	}
+	else if (response == SV_RESPONSE)
+	{
+		if (stringbuffer == PSS_OK)
+		{
+			debugBox->Append("SV_RESPONSE: PSS_OK");
+			if (waitingForLoginResponse)
+			{
+				waitingForLoginResponse = false;
+				loginValid = true;
+
+				loginPanel->Hide();
+				chatPanel->Show();
+			}
+		}
+		else
+		{
+			debugBox->Append("SV_RESPONSE: UNDEFINED");
+		}
+	}
+	
+	//debugBox->AppendString("Test over....");
+	//debugBox->AppendString("");
+}
+
+void cMain::OnConnectButtonClicked(wxCommandEvent& evt)
+{
+	std::string iptoconnect = IPInput->GetValue().ToStdString();
+	if (iptoconnect == "")
+	{
+		iptoconnect = "127.0.0.1";
+	}
+	std::string porttoconnect = portInput->GetValue().ToStdString();
+	if (porttoconnect == "")
+	{
+		porttoconnect = "7777";
+	}
+
+	if (chatServer::Instance()->connectToServer(iptoconnect, porttoconnect) == SOCKET_ERROR)
+	{
+		// show a dialog or summin saying how there was no good connection
 	}
 	else
 	{
-		// get incoming messages
-
-		fd_set copy = master;
-
-		char buffer[1024];
-
-		int socketCount = select(0, &copy, nullptr, nullptr, &zeroTimeout);
-		std::string socketCountString = "Number of active sockets: " + std::to_string(socketCount);
-		socketCountText->SetLabel(socketCountString);
-		debugBox->AppendString(socketCountString);
-
-		for (int i = 0; i < socketCount; i++)
-		{
-			SOCKET sock = copy.fd_array[i];
-
-			memset(buffer, 0, sizeof(buffer));
-			int bytesIn = 0;
-
-			bytesIn = recv(serverSocket, buffer, sizeof(buffer), 0);
-			std::string debugMsg = "Bytes received: " + std::to_string(bytesIn);
-			debugBox->AppendString(debugMsg);
-
-			if (bytesIn > 0)
-			{
-				doc.Parse(buffer, sizeof(buffer));
-
-				std::string commandType = doc.FirstChildElement()->Name();
-
-				if (commandType == "MESSAGE")
-				{
-					chatHistory->AppendString(doc.FirstChildElement()->GetText());
-				}
-			}
-		}
+		connectPanel->Hide();
+		loginPanel->Show();
 	}
-	debugBox->AppendString("Test over....");
-	debugBox->AppendString("");
+}
+
+void cMain::OnLoginButtonClicked(wxCommandEvent& evt)
+{
+
+	std::string userName = usernameInput->GetValue().ToStdString();
+	std::string password = passwordInput->GetValue().ToStdString();
+	if (userName == "" || password == "")
+	{
+		// show a dialog box to say you did goof
+	}
+	else
+	{
+		std::string loginPacket = "";
+
+		loginPacket.append("<username>" + userName + "</username>");
+		loginPacket.append("<password>" + password + "</password>");
+
+		debugBox->Append("<username>" + userName + "</username>");
+		debugBox->Append("<password>" + password + "</password>");
+
+		chatServer::Instance()->sendMessage(RAD_LOGIN, loginPacket);
+		waitingForLoginResponse = true;
+	}
+	
+}
+
+void cMain::OnRegisterButtonClicked(wxCommandEvent& evt)
+{
 }
 
 void cMain::OnButtonClicked(wxCommandEvent& evt)
 {
-	chatHistory->AppendString(textInput->GetValue());
+	SendMessageToServer();
 
-	std::string msg;
-	msg.append("<MESSAGE>");
-	msg.append(textInput->GetValue().ToStdString());
-	msg.append("</MESSAGE>");
-
-	// send the message to the server
-	send(serverSocket, msg.c_str(), msg.length(), 0);
 	evt.Skip();
+}
+
+void cMain::ParseKeyDown(wxKeyEvent& evt)
+{
+	evt.Skip();
+
+	if (evt.GetKeyCode() == WXK_RETURN)
+	{
+		SendMessageToServer();
+		evt.Skip(false);
+	}
 }
 
 void cMain::OnTimer(wxTimerEvent& event)
 {
 	TestForIncomingMessages();
+}
+
+void cMain::SendMessageToServer()
+{
+	chatHistory->AppendString(textInput->GetValue());
+
+	chatServer::Instance()->sendMessage(RAD_MESSAGE, textInput->GetValue().ToStdString());
+
+	textInput->SetValue("");
 }

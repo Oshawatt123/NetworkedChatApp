@@ -1,5 +1,9 @@
 wxWidgets
-https://www.youtube.com/watch?v=FOIbK4bJKS8
 
-multiple clients one thread
-https://www.youtube.com/watch?v=dquxuXeZXgo
+wxWidgets:		https://www.youtube.com/watch?v=FOIbK4bJKS8
+Sizers:			https://forums.wxwidgets.org/viewtopic.php?t=3874
+Panel switching: 	https://forums.wxwidgets.org/viewtopic.php?t=25533
+Panel sizing: 		https://forums.wxwidgets.org/viewtopic.php?t=74
+
+Networking
+single thread network:	https://www.youtube.com/watch?v=dquxuXeZXgo

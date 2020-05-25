@@ -3,6 +3,8 @@
 //#include "wx/wx.h"
 
 #include "cMain.h"
+#include "testFrame.h"
+#include "chatServer.h"
 
 class cApp : public wxApp
 {
@@ -11,7 +13,7 @@ public:
 	~cApp();
 
 private:
-	cMain* frame1 = nullptr;
+	cMain* mainFrame = nullptr;
 
 public:
 	bool OnInit();
