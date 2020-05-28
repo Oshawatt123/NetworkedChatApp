@@ -174,7 +174,8 @@ int main()
 					if (commandType == "DISCONNECT")
 					{
 						std::cout << "Client disconnected : " << std::endl;
-
+						sockToClientMap[sock].inUse = false;
+						sockToClientMap[sock].socket = NULL;
 						// disconnect the client
 						FD_CLR(sock, &master);
 
@@ -200,16 +201,7 @@ int main()
 						}
 
 						//broadcast to other users in the room
-						std::cout << "Sending message to other users" << std::endl;
-						for (int j = 0; j < master.fd_count; j++)
-						{
-							// dont send to the client who sent the data in the first place and dont send to ourselves
-							if (master.fd_array[j] != copy.fd_array[i] && master.fd_array[j] != serverSocket)
-							{
-								send(master.fd_array[j], buffer, sizeof(buffer), 0);
-								std::cout << "Message sent to: " << master.fd_array[j] << std::endl;
-							}
-						}
+						clientRoom->BroadcastMessage(buffer);
 					}
 					else if (commandType == "CREATE_USER")
 					{
@@ -263,14 +255,15 @@ int main()
 						// check all registered users
 						for (auto user : registeredClients)
 						{
-							if (user->username == clientUsername)
+							if (user->username == clientUsername && !user->inUse)
 							{
 								if (user->password == clientPassword)
 								{
 									loginFound = true;
 									activeClients.emplace_back(user);
 									std::cout << "LOGIN SUCCESS => " << " Socket: " << sock << " Username: " << clientUsername << " Password: " << clientPassword << std::endl;
-
+									user->socket = sock;
+									user->inUse = true;
 									// send command to allow login
 
 									memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it

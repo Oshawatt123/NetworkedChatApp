@@ -1,35 +1,6 @@
 ﻿  CPlusPlusServer.cpp
-D:\GitHub Tings\NetworkedChatApp\CPlusPlusServer\CPlusPlusServer\CPlusPlusServer.cpp(204,25): warning C4018:  '<': signed/unsigned mismatch
+  Client.cpp
   Room.cpp
-D:\GitHub Tings\NetworkedChatApp\CPlusPlusServer\CPlusPlusServer\CPlusPlusServer.cpp(299,22): warning C4018:  '<': signed/unsigned mismatch
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\xmemory(761,82): error C2440:  'initializing': cannot convert from 'Client' to '_Objty'
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\xmemory(761,82): error C2440:         with
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\xmemory(761,82): error C2440:         [
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\xmemory(761,82): error C2440:             _Objty=Client *
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\xmemory(761,82): error C2440:         ]
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\xmemory(761,82): message :  No user-defined-conversion operator available that can perform this conversion, or the operator cannot be called
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\vector(635): message :  see reference to function template instantiation 'void std::_Default_allocator_traits<_Alloc>::construct<_Ty,Client&>(_Alloc &,_Objty *const ,Client &)' being compiled
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\vector(635): message :         with
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\vector(635): message :         [
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\vector(635): message :             _Alloc=std::allocator<Client *>,
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\vector(635): message :             _Ty=Client *,
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\vector(635): message :             _Objty=Client *
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\vector(635): message :         ]
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\vector(640): message :  see reference to function template instantiation 'void std::_Default_allocator_traits<_Alloc>::construct<_Ty,Client&>(_Alloc &,_Objty *const ,Client &)' being compiled
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\vector(640): message :         with
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\vector(640): message :         [
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\vector(640): message :             _Alloc=std::allocator<Client *>,
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\vector(640): message :             _Ty=Client *,
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\vector(640): message :             _Objty=Client *
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\vector(640): message :         ]
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\vector(653): message :  see reference to function template instantiation 'void std::vector<Client *,std::allocator<_Ty>>::_Emplace_back_with_unused_capacity<Client&>(Client &)' being compiled
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\vector(653): message :         with
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\vector(653): message :         [
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\vector(653): message :             _Ty=Client *
-C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.22.27905\include\vector(653): message :         ]
   Generating Code...
-D:\GitHub Tings\NetworkedChatApp\CPlusPlusServer\CPlusPlusServer\Room.cpp(5): message :  see reference to function template instantiation 'void std::vector<Client *,std::allocator<_Ty>>::emplace_back<Client&>(Client &)' being compiled
-D:\GitHub Tings\NetworkedChatApp\CPlusPlusServer\CPlusPlusServer\Room.cpp(5): message :         with
-D:\GitHub Tings\NetworkedChatApp\CPlusPlusServer\CPlusPlusServer\Room.cpp(5): message :         [
-D:\GitHub Tings\NetworkedChatApp\CPlusPlusServer\CPlusPlusServer\Room.cpp(5): message :             _Ty=Client *
-D:\GitHub Tings\NetworkedChatApp\CPlusPlusServer\CPlusPlusServer\Room.cpp(5): message :         ]
+D:\GitHub Tings\NetworkedChatApp\CPlusPlusServer\CPlusPlusServer\CPlusPlusServer.cpp(292,22): warning C4018:  '<': signed/unsigned mismatch
+  CPlusPlusServer.vcxproj -> D:\GitHub Tings\NetworkedChatApp\CPlusPlusServer\Debug\CPlusPlusServer.exe
