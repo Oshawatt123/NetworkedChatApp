@@ -101,6 +101,12 @@ void cMain::TestForIncomingMessages()
 
 				loginPanel->Hide();
 				chatPanel->Show();
+
+				chatHistory->Append("Welcome to the Radiator chat application!");
+				chatHistory->Append("You are currently not in a room. To list the");
+				chatHistory->Append("available rooms, type !LIST_ROOMS");
+				chatHistory->Append("Once you have chosen a room, type !JOIN_ROOM x");
+				chatHistory->Append("where x is the room number you wish to join.");
 			}
 			else if (waitingForRegisterResponse)
 			{
@@ -151,7 +157,6 @@ void cMain::OnConnectButtonClicked(wxCommandEvent& evt)
 
 void cMain::OnLoginButtonClicked(wxCommandEvent& evt)
 {
-
 	std::string userName = usernameInput->GetValue().ToStdString();
 	std::string password = passwordInput->GetValue().ToStdString();
 	if (userName == "" || password == "")
@@ -176,6 +181,7 @@ void cMain::OnLoginButtonClicked(wxCommandEvent& evt)
 
 void cMain::OnRegisterButtonClicked(wxCommandEvent& evt)
 {
+	waitingForLoginResponse = false;
 	std::string userName = usernameNewInput->GetValue().ToStdString();
 	std::string password = passwordNewInput->GetValue().ToStdString();
 	std::string passwordCheck = passwordCheckInput->GetValue().ToStdString();
@@ -226,9 +232,53 @@ void cMain::OnTimer(wxTimerEvent& event)
 
 void cMain::SendMessageToServer()
 {
-	chatHistory->AppendString(textInput->GetValue());
+	std::string msg = textInput->GetValue().ToStdString();
+	if (msg[0] == '!')
+	{
+		std::string command = getCommandFromString(msg);
 
-	chatServer::Instance()->sendMessage(RAD_MESSAGE, textInput->GetValue().ToStdString());
+		if (command == "LIST_ROOMS")
+		{
+			chatHistory->Append("Asking server for rooms");
+			chatServer::Instance()->sendMessage(RAD_LISTROOM);
+		}
+		if (command == "JOIN_ROOM")
+		{
+			std::string roomNumber = msg;
+			roomNumber.erase(0, 10);
+			try
+			{
+				int roomNumer = std::stoi(roomNumber);
+				chatHistory->Append("Joining room...");
+				chatServer::Instance()->sendMessage(RAD_JOINROOM, roomNumber);
+			}
+			catch(std::exception e)
+			{
+				chatHistory->Append("Room number invalid. Try again");
+			}
+		}
+	}
+	else
+	{
+		chatHistory->AppendString(msg);
 
+		chatServer::Instance()->sendMessage(RAD_MESSAGE, textInput->GetValue().ToStdString());
+	}
 	textInput->SetValue("");
+}
+
+std::string cMain::getCommandFromString(std::string msg)
+{
+	bool spaceFound = false;
+	std::string command = "";
+
+	// start from 1 to ignore the '!'
+	for (int i = 1; i < msg.length(); i++)
+	{
+		if (msg[i] == ' ')
+			break;
+		command.append(msg.substr(i, 1));
+	}
+
+	return command;
 }

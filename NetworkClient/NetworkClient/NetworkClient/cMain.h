@@ -35,13 +35,6 @@ public:
 
 	void OnConnectButtonClicked(wxCommandEvent& evt);
 
-	// chat page
-	wxPanel* chatPanel = nullptr;
-	wxButton* button1 = nullptr;
-	wxTextCtrl* textInput = nullptr;
-	wxListBox* chatHistory = nullptr;
-	
-
 	// login page
 	wxPanel* loginPanel = nullptr;
 	wxStaticText* usernameText = nullptr;
@@ -66,6 +59,15 @@ public:
 	bool loginValid = false;
 	bool waitingForRegisterResponse = false;
 
+	// chat page
+	wxPanel* chatPanel = nullptr;
+	wxButton* button1 = nullptr;
+	wxTextCtrl* textInput = nullptr;
+	wxListBox* chatHistory = nullptr;
+	
+
+	
+
 	// debug jazz
 	wxListBox* debugBox = nullptr;
 	wxStaticText* socketCountText = nullptr;
@@ -89,5 +91,7 @@ private:
 	int pingResult = 0;
 
 	static const int TIMER_ID = 10010;
+
+	std::string getCommandFromString(std::string msg);
 
 };

@@ -71,7 +71,7 @@ int chatServer::sendMessage(MESSAGE_TYPE messageType, std::string msg)
 {
 	if (pingResult != SOCKET_ERROR)
 	{
-		std::string packet;
+		std::string packet = "";
 		if (messageType == RAD_MESSAGE)
 		{
 			if (msg == "")
@@ -99,13 +99,25 @@ int chatServer::sendMessage(MESSAGE_TYPE messageType, std::string msg)
 			packet.append(msg);
 			packet.append("</CREATE_USER>");
 		}
+		else if (messageType == RAD_JOINROOM)
+		{
+			packet.append("<JOIN_ROOM>");
+			packet.append(msg);
+			packet.append("</JOIN_ROOM>");
+		}
 
-		ZeroMemory(buffer, 1024);
+		if (packet != "")
+		{
+			ZeroMemory(buffer, 1024);
 
-		memcpy(&buffer, packet.c_str(), packet.length());
+			memcpy(&buffer, packet.c_str(), packet.length());
 
-		send(serverSocket, buffer, 1024, 0);
-		return 1;
+			send(serverSocket, buffer, 1024, 0);
+
+			return 1;
+		}
+		
+		return 0;
 	}
 	else
 	{

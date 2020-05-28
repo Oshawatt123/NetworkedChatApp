@@ -4,6 +4,7 @@
 #include <iostream>
 #include <WinSock2.h>
 #include <vector>
+#include <unordered_map>
 #include <thread>
 #include <algorithm>
 
@@ -32,8 +33,11 @@ timeval zeroTimeout;
 
 int newID = 0;
 
-std::vector<Client*> registeredClients;
-std::vector<Client*> activeClients;
+std::vector<Client*>	registeredClients;
+std::vector<Client*>	activeClients;
+std::vector<Room*>		openRooms;
+
+std::unordered_map<SOCKET, Client> sockToClientMap;
 
 static const int PSS_OK = 0;
 static const int ERR_ROOMINVALID = 1;
@@ -110,11 +114,22 @@ int main()
 
 	tinyxml2::XMLDocument doc;
 
+	// hard-coded clients for QoL
 	Client* admin = new Client();
 	admin->username = "admin";
 	admin->password = "radiator";
 
 	registeredClients.emplace_back(admin);
+
+	Client* QoL = new Client();
+	QoL->username = "w";
+	QoL->password = "w";
+
+	registeredClients.emplace_back(QoL);
+
+	// hard-coded rooms for QoL
+	Room* firstRoom = new Room();
+	openRooms.emplace_back(firstRoom);
 
 	while (true) // ew
 	{
@@ -174,7 +189,17 @@ int main()
 
 						memcpy(buffer, msg.c_str(), msg.length());
 
-						//broadcast to other users
+						Client* currClient = &sockToClientMap[sock];
+						Room* clientRoom = currClient->currentRoom;
+						if (clientRoom == nullptr)
+						{
+							memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
+							std::string response = WrapTextInElement(std::to_string(ERR_ROOMINVALID), "ACRE");
+							memcpy(buffer, response.c_str(), response.length());
+							send(master.fd_array[i], buffer, sizeof(buffer), 0);
+						}
+
+						//broadcast to other users in the room
 						std::cout << "Sending message to other users" << std::endl;
 						for (int j = 0; j < master.fd_count; j++)
 						{
@@ -192,8 +217,18 @@ int main()
 						std::string password = doc.FirstChildElement("CREATE_USER")->FirstChildElement("password")->GetText();
 						std::string passwordCheck = doc.FirstChildElement("CREATE_USER")->FirstChildElement("passwordCheck")->GetText();
 
+						// check user doesnt already exist
+						bool usernameAvailable = true;
+						for (auto client : registeredClients)
+						{
+							if (client->username == username)
+							{
+								usernameAvailable = false;
+							}
+						}
+
 						// check password
-						if (password == passwordCheck)
+						if (password == passwordCheck && usernameAvailable)
 						{
 							Client* newClient = new Client();
 							newClient->username = username;
@@ -211,6 +246,7 @@ int main()
 						}
 						else
 						{
+							memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
 							std::string response = WrapTextInElement(std::to_string(ERR_INVALIDLOGIN), "ACRE");
 							memcpy(buffer, response.c_str(), response.length());
 							send(master.fd_array[i], buffer, sizeof(buffer), 0);
@@ -252,6 +288,24 @@ int main()
 							std::string response = WrapTextInElement(std::to_string(ERR_INVALIDLOGIN), "ACRE");
 							memcpy(buffer, response.c_str(), response.length());
 							send(sock, buffer, sizeof(buffer), 0);
+						}
+					}
+					else if (commandType == "JOIN_ROOM")
+					{
+						int roomNumber = std::stoi(doc.FirstChildElement()->GetText());
+						std::cout << "REQUEST TO JOIN ROOM " << roomNumber << " from SOCKET " << sock << std::endl;
+
+						// if room exists
+						if (roomNumber < openRooms.size())
+						{
+							openRooms[roomNumber]->JoinRoom(sockToClientMap[sock]);
+
+							memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
+							std::string response = WrapTextInElement(std::to_string(PSS_OK), "ACRE");
+							memcpy(buffer, response.c_str(), response.length());
+
+							send(sock, buffer, sizeof(buffer), 0);
+							std::cout << "RESPONSE SENT: " << buffer << std::endl;
 						}
 					}
 				}
