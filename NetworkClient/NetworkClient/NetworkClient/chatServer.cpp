@@ -105,6 +105,17 @@ int chatServer::sendMessage(MESSAGE_TYPE messageType, std::string msg)
 			packet.append(msg);
 			packet.append("</JOIN_ROOM>");
 		}
+		else if (messageType == RAD_LISTROOM)
+		{
+			packet.append("<LIST_ROOMS>");
+			packet.append("</LIST_ROOMS>");
+		}
+		else if (messageType == RAD_WHISPER)
+		{
+			packet.append("<WHISPER>");
+			packet.append(msg);
+			packet.append("</WHISPER>");
+		}
 
 		if (packet != "")
 		{

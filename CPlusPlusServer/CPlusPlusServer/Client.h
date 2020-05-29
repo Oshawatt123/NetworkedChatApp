@@ -11,6 +11,7 @@ public:
 
 	SOCKET socket;
 	int inUse = false;
+	int ID;
 
 	Room* currentRoom = nullptr;
 

@@ -32,6 +32,7 @@ fd_set master;
 timeval zeroTimeout;
 
 int newID = 0;
+int roomID = 0;
 
 std::vector<Client*>	registeredClients;
 std::vector<Client*>	activeClients;
@@ -118,17 +119,21 @@ int main()
 	Client* admin = new Client();
 	admin->username = "admin";
 	admin->password = "radiator";
+	admin->ID = 0;
 
 	registeredClients.emplace_back(admin);
 
 	Client* QoL = new Client();
 	QoL->username = "w";
 	QoL->password = "w";
+	QoL->ID = 1;
 
 	registeredClients.emplace_back(QoL);
 
+	newID = 2;
+
 	// hard-coded rooms for QoL
-	Room* firstRoom = new Room();
+	Room* firstRoom = new Room(roomID++);
 	openRooms.emplace_back(firstRoom);
 
 	while (true) // ew
@@ -186,9 +191,10 @@ int main()
 					{
 						std::cout << "Message from " << copy.fd_array[i] << ": " << doc.FirstChildElement()->GetText() << std::endl;
 						std::string message = doc.FirstChildElement()->GetText();
-						std::string msg = "<MESSAGE>" + message + "</MESSAGE>";
 
-						memcpy(buffer, msg.c_str(), msg.length());
+						// MAKE SURE WE CLEAN THE BUFFER BEFORE WE WRITE TO IT
+						memset(buffer, 0, sizeof(buffer));
+						memcpy(buffer, message.c_str(), message.length());
 
 						Client* currClient = &sockToClientMap[sock];
 						Room* clientRoom = currClient->currentRoom;
@@ -201,7 +207,7 @@ int main()
 						}
 
 						//broadcast to other users in the room
-						clientRoom->BroadcastMessage(buffer);
+						clientRoom->BroadcastMessage(buffer, *currClient);
 					}
 					else if (commandType == "CREATE_USER")
 					{
@@ -260,12 +266,17 @@ int main()
 								if (user->password == clientPassword)
 								{
 									loginFound = true;
-									activeClients.emplace_back(user);
-									std::cout << "LOGIN SUCCESS => " << " Socket: " << sock << " Username: " << clientUsername << " Password: " << clientPassword << std::endl;
+
+									// init user. this must go first as sockToClientMap does not use a pointer
 									user->socket = sock;
 									user->inUse = true;
-									// send command to allow login
 
+									// add to appropriate vectors/maps
+									activeClients.emplace_back(user);
+									sockToClientMap.insert(std::make_pair(sock, *user));
+									std::cout << "LOGIN SUCCESS => " << " Socket: " << sock << " Username: " << clientUsername << " Password: " << clientPassword << std::endl;
+									
+									// send command to allow login
 									memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
 									std::string response = WrapTextInElement(std::to_string(PSS_OK), "ACRE");
 									memcpy(buffer, response.c_str(), response.length());
@@ -291,7 +302,7 @@ int main()
 						// if room exists
 						if (roomNumber < openRooms.size())
 						{
-							openRooms[roomNumber]->JoinRoom(sockToClientMap[sock]);
+							openRooms[roomNumber]->JoinRoom(&sockToClientMap[sock]);
 
 							memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
 							std::string response = WrapTextInElement(std::to_string(PSS_OK), "ACRE");
@@ -299,6 +310,49 @@ int main()
 
 							send(sock, buffer, sizeof(buffer), 0);
 							std::cout << "RESPONSE SENT: " << buffer << std::endl;
+						}
+					}
+					else if (commandType == "LIST_ROOMS")
+					{
+						Client* currClient = &sockToClientMap[sock];
+						Room* clientRoom = currClient->currentRoom;
+						std::string msg = "";
+						msg.append("Open Rooms: \n");
+						for (auto room : openRooms)
+						{
+							msg.append("Room " + std::to_string(room->ID) + "\n");
+							clientRoom->WhisperMessage(msg, *currClient);
+						}
+
+					}
+					else if (commandType == "WHISPER")
+					{
+						std::string recipientIDStr = doc.FirstChildElement("WHISPER")->FirstChildElement("user")->GetText();
+						std::string whisperMessage = doc.FirstChildElement("WHISPER")->FirstChildElement("message")->GetText();
+
+						try
+						{
+							int recipientID = std::stoi(recipientIDStr);
+							Client* recipient = nullptr;
+
+							for (auto client : activeClients)
+							{
+								if (client->ID == recipientID)
+									recipient = client;
+							}
+
+							if (recipient != nullptr)
+							{
+								Client* currClient = &sockToClientMap[sock];
+								Room* clientRoom = currClient->currentRoom;
+
+								if(clientRoom != nullptr)
+									clientRoom->WhisperMessage(whisperMessage, *recipient, &sockToClientMap[sock]);
+							}
+						}
+						catch(std::exception e)
+						{
+							std::cout << "ERROR PARSING RECIPIENT ID" << std::endl;
 						}
 					}
 				}

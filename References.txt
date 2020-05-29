@@ -7,3 +7,7 @@ Panel sizing: 		https://forums.wxwidgets.org/viewtopic.php?t=74
 
 Networking
 single thread network:	https://www.youtube.com/watch?v=dquxuXeZXgo
+
+Strings
+https://stackoverflow.com/questions/13172158/c-split-string-by-line
+https://www.geeksforgeeks.org/string-find-in-cpp/

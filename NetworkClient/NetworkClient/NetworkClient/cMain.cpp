@@ -60,7 +60,7 @@ cMain::cMain() :	wxFrame(nullptr, wxID_ANY, "Radiator Network", wxPoint(30,30), 
 	loginPanel->Hide();
 	chatPanel->Hide();
 
-	tim.Start(16);
+	tim.Start(1);
 }
 
 cMain::~cMain()
@@ -86,7 +86,14 @@ void cMain::TestForIncomingMessages()
 	}
 	else if (response == SV_MESSAGE)
 	{
-		chatHistory->Append(stringbuffer);
+		std::stringstream ss(stringbuffer.c_str());
+		std::string to;
+
+		while (std::getline(ss, to, '\n')) {
+			chatHistory->Append(to);
+		}
+
+		chatHistory->SetSelection(chatHistory->GetCount() - 1);
 		debugBox->Append("SV_MESSAGE");
 	}
 	else if (response == SV_RESPONSE)
@@ -174,6 +181,7 @@ void cMain::OnLoginButtonClicked(wxCommandEvent& evt)
 		loginPacket.append("<password>" + password + "</password>");
 
 		chatServer::Instance()->sendMessage(RAD_LOGIN, loginPacket);
+		username = userName;
 		waitingForLoginResponse = true;
 	}
 	
@@ -228,6 +236,7 @@ void cMain::ParseKeyDown(wxKeyEvent& evt)
 void cMain::OnTimer(wxTimerEvent& event)
 {
 	TestForIncomingMessages();
+	tim.Start();
 }
 
 void cMain::SendMessageToServer()
@@ -242,7 +251,7 @@ void cMain::SendMessageToServer()
 			chatHistory->Append("Asking server for rooms");
 			chatServer::Instance()->sendMessage(RAD_LISTROOM);
 		}
-		if (command == "JOIN_ROOM")
+		else if (command == "JOIN_ROOM")
 		{
 			std::string roomNumber = msg;
 			roomNumber.erase(0, 10);
@@ -257,14 +266,53 @@ void cMain::SendMessageToServer()
 				chatHistory->Append("Room number invalid. Try again");
 			}
 		}
+		else if (command == "WHISPER")
+		{
+			std::stringstream ss(msg.c_str());
+			std::string to;
+
+			std::vector<std::string> params;
+
+			while (std::getline(ss, to, ' ')) {
+				params.emplace_back(to);
+			}
+			
+			std::string recipient = params[1];
+			std::string message = params[2];
+
+			std::string packetString = "";
+			packetString.append("<user>" + recipient + "</user>");
+			packetString.append("<message>" + message + "</message>");
+
+			chatServer::Instance()->sendMessage(RAD_WHISPER, packetString);
+		}
 	}
 	else
 	{
-		chatHistory->AppendString(msg);
+		// check for < or >
+		std::string checkString = "<";
 
-		chatServer::Instance()->sendMessage(RAD_MESSAGE, textInput->GetValue().ToStdString());
+		size_t found = msg.find("<");
+		if (found == std::string::npos)
+		{
+
+			chatHistory->AppendString("[" + username + "]: " + msg);
+
+			chatServer::Instance()->sendMessage(RAD_MESSAGE, textInput->GetValue().ToStdString());
+		}
+		else
+		{
+			chatHistory->Append("");
+			chatHistory->Append("############ERROR#############");
+			chatHistory->Append("Illegal character found: '<'");
+			chatHistory->Append("Message not sent");
+			chatHistory->Append("##############################");
+			chatHistory->Append("");
+		}
 	}
 	textInput->SetValue("");
+
+	chatHistory->SetSelection(chatHistory->GetCount() - 1);
 }
 
 std::string cMain::getCommandFromString(std::string msg)

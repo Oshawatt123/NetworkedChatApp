@@ -10,6 +10,7 @@
 #include "chatServer.h"
 
 #include <vector>
+#include <sstream>
 
 #pragma comment(lib, "Ws2_32.lib")
 
@@ -93,5 +94,7 @@ private:
 	static const int TIMER_ID = 10010;
 
 	std::string getCommandFromString(std::string msg);
+
+	std::string username;
 
 };
