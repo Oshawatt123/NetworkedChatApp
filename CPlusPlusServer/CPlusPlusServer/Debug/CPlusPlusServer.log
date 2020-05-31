@@ -1,5 +1,3 @@
 ﻿  CPlusPlusServer.cpp
-  Room.cpp
-  Generating Code...
-D:\GitHub Tings\NetworkedChatApp\CPlusPlusServer\CPlusPlusServer\CPlusPlusServer.cpp(303,22): warning C4018:  '<': signed/unsigned mismatch
+D:\GitHub Tings\NetworkedChatApp\CPlusPlusServer\CPlusPlusServer\CPlusPlusServer.cpp(366,23): warning C4018:  '<': signed/unsigned mismatch
   CPlusPlusServer.vcxproj -> D:\GitHub Tings\NetworkedChatApp\CPlusPlusServer\Debug\CPlusPlusServer.exe

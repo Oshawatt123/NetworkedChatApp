@@ -1,6 +1,2 @@
-﻿  cApp.cpp
-  cConnectionScreen.cpp
-  cMain.cpp
-  Generating Code...
-D:\GitHub Tings\NetworkedChatApp\NetworkClient\NetworkClient\NetworkClient\cMain.cpp(324,20): warning C4018:  '<': signed/unsigned mismatch
+﻿  cMain.cpp
   NetworkClient.vcxproj -> D:\GitHub Tings\NetworkedChatApp\NetworkClient\NetworkClient\Debug\NetworkClient.exe

@@ -66,7 +66,7 @@ public:
 	wxTextCtrl* textInput = nullptr;
 	wxListBox* chatHistory = nullptr;
 	
-
+	bool joiningRoom = false;
 	
 
 	// debug jazz

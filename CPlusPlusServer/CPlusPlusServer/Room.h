@@ -15,6 +15,7 @@ public:
 
 	int ID;
 	int numUsersInRoom;
+	int maxCapacity = 10;
 
 public:
 	void JoinRoom(Client* client);
@@ -24,6 +25,8 @@ public:
 	void BroadcastMessage(std::string message, Client& sender);
 
 	void WhisperMessage(std::string message, Client& recipient, Client* sender = nullptr);
+
+	std::string GetUsersList();
 
 	Room(int id);
 	~Room();

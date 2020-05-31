@@ -36,6 +36,7 @@ static const std::string ERR_NEEDMOREPARAMS = "3";
 static const std::string ERR_TOOMANYPARAMS = "4";
 static const std::string ERR_INVALIDLOGIN = "5";
 static const std::string ERR_ACCESS = "6";
+static const std::string ERR_INVALIDRGSTR = "7";
 
 class chatServer
 {

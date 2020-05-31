@@ -47,6 +47,7 @@ static const int ERR_NEEDMOREPARAMS = 3;
 static const int ERR_TOOMANYPARAMS = 4;
 static const int ERR_INVALIDLOGIN = 5;
 static const int ERR_ACCESS = 6;
+static const int ERR_INVALIDRGSTR = 7;
 
 // this is run on a different thread
 void getNewClients()
@@ -179,8 +180,15 @@ int main()
 					if (commandType == "DISCONNECT")
 					{
 						std::cout << "Client disconnected : " << std::endl;
-						sockToClientMap[sock].inUse = false;
-						sockToClientMap[sock].socket = NULL;
+						// log out the client
+						Client* currClient = &sockToClientMap[sock];
+						Room* clientRoom = currClient->currentRoom;
+
+						clientRoom->LeaveRoom(currClient); // leave room
+						currClient->inUse = false; // make available to log into the
+						currClient->socket = NULL;
+
+						activeClients.erase(std::remove(activeClients.begin(), activeClients.end(), currClient), activeClients.end()); // remove from active list
 						// disconnect the client
 						FD_CLR(sock, &master);
 
@@ -203,80 +211,165 @@ int main()
 							memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
 							std::string response = WrapTextInElement(std::to_string(ERR_ROOMINVALID), "ACRE");
 							memcpy(buffer, response.c_str(), response.length());
-							send(master.fd_array[i], buffer, sizeof(buffer), 0);
-						}
-
-						//broadcast to other users in the room
-						clientRoom->BroadcastMessage(buffer, *currClient);
-					}
-					else if (commandType == "CREATE_USER")
-					{
-						std::string username = doc.FirstChildElement("CREATE_USER")->FirstChildElement("username")->GetText();
-						std::string password = doc.FirstChildElement("CREATE_USER")->FirstChildElement("password")->GetText();
-						std::string passwordCheck = doc.FirstChildElement("CREATE_USER")->FirstChildElement("passwordCheck")->GetText();
-
-						// check user doesnt already exist
-						bool usernameAvailable = true;
-						for (auto client : registeredClients)
-						{
-							if (client->username == username)
-							{
-								usernameAvailable = false;
-							}
-						}
-
-						// check password
-						if (password == passwordCheck && usernameAvailable)
-						{
-							Client* newClient = new Client();
-							newClient->username = username;
-							newClient->password = password;
-
-							registeredClients.emplace_back(newClient);
-
-							// send OK
-							memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
-							std::string response = WrapTextInElement(std::to_string(PSS_OK), "ACRE");
-							memcpy(buffer, response.c_str(), response.length());
-
 							send(sock, buffer, sizeof(buffer), 0);
-							std::cout << "RESPONSE SENT: " << buffer << std::endl;
 						}
 						else
 						{
+							//broadcast to other users in the room
+							clientRoom->BroadcastMessage(buffer, *currClient);
+						}
+					}
+					else if (commandType == "CREATE_USER")
+					{
+						std::string username;
+						std::string password;
+						std::string passwordCheck;
+						bool canCreateUser = true;
+						try
+						{
+							username = doc.FirstChildElement("CREATE_USER")->FirstChildElement("username")->GetText();
+							password = doc.FirstChildElement("CREATE_USER")->FirstChildElement("password")->GetText();
+							passwordCheck = doc.FirstChildElement("CREATE_USER")->FirstChildElement("passwordCheck")->GetText();
+						}
+						catch (std::exception e)
+						{
 							memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
-							std::string response = WrapTextInElement(std::to_string(ERR_INVALIDLOGIN), "ACRE");
+							std::string response = WrapTextInElement(std::to_string(ERR_NEEDMOREPARAMS), "ACRE");
 							memcpy(buffer, response.c_str(), response.length());
-							send(master.fd_array[i], buffer, sizeof(buffer), 0);
+							send(sock, buffer, sizeof(buffer), 0);
+							canCreateUser = false;
+						}
+
+						if (canCreateUser)
+						{
+							// check user doesnt already exist
+							bool usernameAvailable = true;
+							for (auto client : registeredClients)
+							{
+								if (client->username == username)
+								{
+									usernameAvailable = false;
+								}
+							}
+
+							// check password
+							if (password == passwordCheck && usernameAvailable)
+							{
+								Client* newClient = new Client();
+								newClient->username = username;
+								newClient->password = password;
+
+								registeredClients.emplace_back(newClient);
+
+								// send OK
+								memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
+								std::string response = WrapTextInElement(std::to_string(PSS_OK), "ACRE");
+								memcpy(buffer, response.c_str(), response.length());
+
+								send(sock, buffer, sizeof(buffer), 0);
+								std::cout << "RESPONSE SENT: " << buffer << std::endl;
+							}
+							else
+							{
+								memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
+								std::string response = WrapTextInElement(std::to_string(ERR_INVALIDRGSTR), "ACRE");
+								memcpy(buffer, response.c_str(), response.length());
+								send(sock, buffer, sizeof(buffer), 0);
+							}
 						}
 					}
 					else if (commandType == "LOGIN")
 					{
+						std::cout << "LOGIN ATTEMPT => " << " Socket: " << sock << std::endl;
+						std::string clientUsername;
+						std::string clientPassword;
 						bool loginFound = false;
-						std::string clientUsername = doc.FirstChildElement("LOGIN")->FirstChildElement("username")->GetText();
-						std::string clientPassword = doc.FirstChildElement("LOGIN")->FirstChildElement("password")->GetText();
+						bool canLogin = true;
 
-						std::cout << "LOGIN ATTEMPT => " << " Socket: " << sock << " Username: " << clientUsername << " Password: " << clientPassword << std::endl;
-
-						// check all registered users
-						for (auto user : registeredClients)
+						try
 						{
-							if (user->username == clientUsername && !user->inUse)
+							clientUsername = doc.FirstChildElement("LOGIN")->FirstChildElement("username")->GetText();
+							clientPassword = doc.FirstChildElement("LOGIN")->FirstChildElement("password")->GetText();
+							std::cout << "LOGIN ATTEMPT => " << " Socket: " << sock << " Username: " << clientUsername << " Password: " << clientPassword << std::endl;
+						}
+						catch (std::exception e)
+						{
+							memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
+							std::string response = WrapTextInElement(std::to_string(ERR_NEEDMOREPARAMS), "ACRE");
+							memcpy(buffer, response.c_str(), response.length());
+							send(sock, buffer, sizeof(buffer), 0);
+							canLogin = false;
+						}
+
+						if (canLogin)
+						{
+							// check all registered users
+							for (auto user : registeredClients)
 							{
-								if (user->password == clientPassword)
+								if (user->username == clientUsername && !user->inUse)
 								{
-									loginFound = true;
+									if (user->password == clientPassword)
+									{
+										loginFound = true;
 
-									// init user. this must go first as sockToClientMap does not use a pointer
-									user->socket = sock;
-									user->inUse = true;
+										// init user. this must go first as sockToClientMap does not use a pointer
+										user->socket = sock;
+										user->inUse = true;
 
-									// add to appropriate vectors/maps
-									activeClients.emplace_back(user);
-									sockToClientMap.insert(std::make_pair(sock, *user));
-									std::cout << "LOGIN SUCCESS => " << " Socket: " << sock << " Username: " << clientUsername << " Password: " << clientPassword << std::endl;
-									
-									// send command to allow login
+										// add to appropriate vectors/maps
+										activeClients.emplace_back(user);
+										sockToClientMap.insert(std::make_pair(sock, *user));
+										std::cout << "LOGIN SUCCESS => " << " Socket: " << sock << " Username: " << clientUsername << " Password: " << clientPassword << std::endl;
+
+										// send command to allow login
+										memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
+										std::string response = WrapTextInElement(std::to_string(PSS_OK), "ACRE");
+										memcpy(buffer, response.c_str(), response.length());
+
+										send(sock, buffer, sizeof(buffer), 0);
+										std::cout << "RESPONSE SENT: " << buffer << std::endl;
+									}
+								}
+							}
+							if (!loginFound)
+							{
+								// say screw you!
+								std::string response = WrapTextInElement(std::to_string(ERR_INVALIDLOGIN), "ACRE");
+								memcpy(buffer, response.c_str(), response.length());
+								send(sock, buffer, sizeof(buffer), 0);
+							}
+						}
+					}
+					else if (commandType == "JOIN_ROOM")
+					{
+						std::cout << "REQUEST TO JOIN ROOM from SOCKET " << sock << std::endl;
+						
+						int roomNumber;
+						bool canJoinRoom = true;
+						try
+						{
+							roomNumber = std::stoi(doc.FirstChildElement()->GetText());
+						}
+						catch (std::exception e)
+						{
+							memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
+							std::string response = WrapTextInElement(std::to_string(ERR_NEEDMOREPARAMS), "ACRE");
+							memcpy(buffer, response.c_str(), response.length());
+							send(sock, buffer, sizeof(buffer), 0);
+							canJoinRoom = false;
+						}						
+
+						if (canJoinRoom)
+						{
+							std::cout << sock << " has joined room number " << roomNumber << std::endl;
+							// if room exists
+							if (roomNumber < openRooms.size())
+							{
+								Room* roomToJoin = openRooms[roomNumber];
+								if (roomToJoin->numUsersInRoom + 1 < roomToJoin->maxCapacity)
+								{
+									roomToJoin->JoinRoom(&sockToClientMap[sock]);
+
 									memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
 									std::string response = WrapTextInElement(std::to_string(PSS_OK), "ACRE");
 									memcpy(buffer, response.c_str(), response.length());
@@ -284,32 +377,23 @@ int main()
 									send(sock, buffer, sizeof(buffer), 0);
 									std::cout << "RESPONSE SENT: " << buffer << std::endl;
 								}
+								else
+								{
+									memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
+									std::string response = WrapTextInElement(std::to_string(ERR_ROOMFULL), "ACRE");
+									memcpy(buffer, response.c_str(), response.length());
+									send(sock, buffer, sizeof(buffer), 0);
+								}
 							}
-						}
-						if (!loginFound)
-						{
-							// say screw you!
-							std::string response = WrapTextInElement(std::to_string(ERR_INVALIDLOGIN), "ACRE");
-							memcpy(buffer, response.c_str(), response.length());
-							send(sock, buffer, sizeof(buffer), 0);
-						}
-					}
-					else if (commandType == "JOIN_ROOM")
-					{
-						int roomNumber = std::stoi(doc.FirstChildElement()->GetText());
-						std::cout << "REQUEST TO JOIN ROOM " << roomNumber << " from SOCKET " << sock << std::endl;
+							else
+							{
+								memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
+								std::string response = WrapTextInElement(std::to_string(ERR_ROOMINVALID), "ACRE");
+								memcpy(buffer, response.c_str(), response.length());
 
-						// if room exists
-						if (roomNumber < openRooms.size())
-						{
-							openRooms[roomNumber]->JoinRoom(&sockToClientMap[sock]);
-
-							memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
-							std::string response = WrapTextInElement(std::to_string(PSS_OK), "ACRE");
-							memcpy(buffer, response.c_str(), response.length());
-
-							send(sock, buffer, sizeof(buffer), 0);
-							std::cout << "RESPONSE SENT: " << buffer << std::endl;
+								send(sock, buffer, sizeof(buffer), 0);
+								std::cout << "RESPONSE SENT: " << buffer << std::endl;
+							}
 						}
 					}
 					else if (commandType == "LIST_ROOMS")
@@ -321,39 +405,97 @@ int main()
 						for (auto room : openRooms)
 						{
 							msg.append("Room " + std::to_string(room->ID) + "\n");
-							clientRoom->WhisperMessage(msg, *currClient);
 						}
-
+						// unsure how this works?
+						clientRoom->WhisperMessage(msg, *currClient);
 					}
 					else if (commandType == "WHISPER")
 					{
-						std::string recipientIDStr = doc.FirstChildElement("WHISPER")->FirstChildElement("user")->GetText();
-						std::string whisperMessage = doc.FirstChildElement("WHISPER")->FirstChildElement("message")->GetText();
-
+						std::string recipientIDStr;
+						std::string whisperMessage;
+						bool canWhisper = true;
 						try
 						{
-							int recipientID = std::stoi(recipientIDStr);
-							Client* recipient = nullptr;
+							recipientIDStr = doc.FirstChildElement("WHISPER")->FirstChildElement("user")->GetText();
+							whisperMessage = doc.FirstChildElement("WHISPER")->FirstChildElement("message")->GetText();
+						}
+						catch (std::exception e)
+						{
+							memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
+							std::string response = WrapTextInElement(std::to_string(ERR_NEEDMOREPARAMS), "ACRE");
+							memcpy(buffer, response.c_str(), response.length());
+							send(sock, buffer, sizeof(buffer), 0);
+							canWhisper = false;
+						}
 
-							for (auto client : activeClients)
+						if (canWhisper)
+						{
+							try
 							{
-								if (client->ID == recipientID)
-									recipient = client;
+								int recipientID = std::stoi(recipientIDStr);
+								Client* recipient = nullptr;
+
+								for (auto client : activeClients)
+								{
+									if (client->ID == recipientID)
+										recipient = client;
+								}
+
+								if (recipient != nullptr)
+								{
+									Client* currClient = &sockToClientMap[sock];
+									Room* clientRoom = currClient->currentRoom;
+
+									if (clientRoom != nullptr)
+										clientRoom->WhisperMessage(whisperMessage, *recipient, &sockToClientMap[sock]);
+									else
+									{
+										// client is trying to whisper but is not in a room
+										memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
+										std::string response = WrapTextInElement(std::to_string(ERR_ACCESS), "ACRE");
+										memcpy(buffer, response.c_str(), response.length());
+										send(sock, buffer, sizeof(buffer), 0);
+									}
+								}
+								else
+								{
+									// client is whispering to nobody
+									memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
+									std::string response = WrapTextInElement(std::to_string(ERR_NEEDMOREPARAMS), "ACRE");
+									memcpy(buffer, response.c_str(), response.length());
+									send(sock, buffer, sizeof(buffer), 0);
+								}
 							}
-
-							if (recipient != nullptr)
+							catch (std::exception e)
 							{
-								Client* currClient = &sockToClientMap[sock];
-								Room* clientRoom = currClient->currentRoom;
-
-								if(clientRoom != nullptr)
-									clientRoom->WhisperMessage(whisperMessage, *recipient, &sockToClientMap[sock]);
+								std::cout << "ERROR PARSING RECIPIENT ID" << std::endl;
+								memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
+								std::string response = WrapTextInElement(std::to_string(ERR_NEEDMOREPARAMS), "ACRE");
+								memcpy(buffer, response.c_str(), response.length());
+								send(sock, buffer, sizeof(buffer), 0);
 							}
 						}
-						catch(std::exception e)
+					}
+					else if (commandType == "LIST_USERS")
+					{
+						Client* currClient = &sockToClientMap[sock];
+						Room* clientRoom = currClient->currentRoom;
+						std::string msg = "";
+
+						if (clientRoom != nullptr)
+						{
+							msg = clientRoom->GetUsersList();
+							clientRoom->WhisperMessage(msg, *currClient);
+						}
+						else
 						{
 							std::cout << "ERROR PARSING RECIPIENT ID" << std::endl;
+							memset(buffer, 0, sizeof(buffer)); // clear buffer for sending, and write to it
+							std::string response = WrapTextInElement(std::to_string(ERR_ACCESS), "ACRE");
+							memcpy(buffer, response.c_str(), response.length());
+							send(sock, buffer, sizeof(buffer), 0);
 						}
+						// client not in a room, send error back
 					}
 				}
 			}

@@ -116,6 +116,16 @@ int chatServer::sendMessage(MESSAGE_TYPE messageType, std::string msg)
 			packet.append(msg);
 			packet.append("</WHISPER>");
 		}
+		else if (messageType == RAD_LISTUSER)
+		{
+			packet.append("<LIST_USERS>");
+			packet.append("</LIST_USERS>");
+		}
+		else if (messageType == RAD_LEAVEROOM)
+		{
+			packet.append("<LEAVE_ROOM>");
+			packet.append("</LEAVE_ROOM>");
+		}
 
 		if (packet != "")
 		{

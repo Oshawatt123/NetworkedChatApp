@@ -120,12 +120,58 @@ void cMain::TestForIncomingMessages()
 				waitingForRegisterResponse = false;
 				debugBox->Append("Registration successful! Safe to login.");
 			}
+			else if (joiningRoom)
+			{
+				joiningRoom = false;
+				chatHistory->Append("Successfully joined room");
+				chatHistory->Append("");
+			}
 		}
 		else if (stringbuffer == ERR_INVALIDLOGIN)
 		{
 			waitingForLoginResponse = false;
-			waitingForRegisterResponse = false;
 			debugBox->Append("Unsuccessful login attempt. Try again");
+		}
+		else if (stringbuffer == ERR_ROOMINVALID)
+		{
+			joiningRoom = false;
+			chatHistory->Append("Attempt at joining the room was fruitful. The room does not exist");
+			chatHistory->Append("");
+			debugBox->Append("ERR_ROOMINVALID");
+		}
+		else if (stringbuffer == ERR_ROOMFULL)
+		{
+			joiningRoom = false;
+			chatHistory->Append("Attempt at jining the room was fruitful. The room is out of.... room");
+			chatHistory->Append("");
+			debugBox->Append("ERR_ROOMFULL");
+		}
+		else if (stringbuffer == ERR_NEEDMOREPARAMS)
+		{
+			chatHistory->Append("An unexcepted error has occured with your command.");
+			chatHistory->Append("Not enough parameters were sent to the server");
+			chatHistory->Append("or the parameters sent were invalid / corrupted in transit.");
+			chatHistory->Append("Please try again.");
+			chatHistory->Append("");
+			debugBox->Append("ERR_NEEDMOREPARAMS");
+		}
+		else if (stringbuffer == ERR_TOOMANYPARAMS)
+		{
+			chatHistory->Append("An unexcepted error has occured with your command.");
+			chatHistory->Append("Too many parameters were sent to the server. Please try again");
+			chatHistory->Append("");
+			debugBox->Append("ERR_TOOMANYPARAMS");
+		}
+		else if (stringbuffer == ERR_ACCESS)
+		{
+			chatHistory->Append("You do not have access to this command at this time");
+			chatHistory->Append("");
+			debugBox->Append("ERR_ACCESS");
+		}
+		else if (stringbuffer == ERR_INVALIDRGSTR)
+		{
+			waitingForRegisterResponse = false;
+			debugBox->Append("Username taken. Try another.");
 		}
 		else
 		{
@@ -260,8 +306,9 @@ void cMain::SendMessageToServer()
 				int roomNumer = std::stoi(roomNumber);
 				chatHistory->Append("Joining room...");
 				chatServer::Instance()->sendMessage(RAD_JOINROOM, roomNumber);
+				joiningRoom = true;
 			}
-			catch(std::exception e)
+			catch (std::exception e)
 			{
 				chatHistory->Append("Room number invalid. Try again");
 			}
@@ -276,15 +323,37 @@ void cMain::SendMessageToServer()
 			while (std::getline(ss, to, ' ')) {
 				params.emplace_back(to);
 			}
-			
-			std::string recipient = params[1];
-			std::string message = params[2];
 
-			std::string packetString = "";
-			packetString.append("<user>" + recipient + "</user>");
-			packetString.append("<message>" + message + "</message>");
+			if (params.size() >= 3)
+			{
 
-			chatServer::Instance()->sendMessage(RAD_WHISPER, packetString);
+				std::string recipient = params[1];
+				std::string message = "";
+				for (unsigned int i = 2; i < params.size(); i++)
+				{
+					message.append(params[i] + " ");
+				}
+
+				std::string packetString = "";
+				packetString.append("<user>" + recipient + "</user>");
+				packetString.append("<message>" + message + "</message>");
+
+				chatServer::Instance()->sendMessage(RAD_WHISPER, packetString);
+			}
+			else
+			{
+				chatHistory->Append("NOT ENOUGH PARAMETERS IN COMMAND");
+			}
+		}
+		else if (command == "LIST_USERS")
+		{
+			chatHistory->Append("Asking server for users...");
+			chatServer::Instance()->sendMessage(RAD_LISTUSER);
+		}
+		else if (command == "LEAVE_ROOM")
+		{
+			chatHistory->Append("Leaving room...");
+			chatServer::Instance()->sendMessage(RAD_LEAVEROOM);
 		}
 	}
 	else
@@ -321,7 +390,7 @@ std::string cMain::getCommandFromString(std::string msg)
 	std::string command = "";
 
 	// start from 1 to ignore the '!'
-	for (int i = 1; i < msg.length(); i++)
+	for (unsigned int i = 1; i < msg.length(); i++)
 	{
 		if (msg[i] == ' ')
 			break;

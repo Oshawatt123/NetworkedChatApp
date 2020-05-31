@@ -54,6 +54,18 @@ void Room::WhisperMessage(std::string message, Client& recipient, Client* sender
 	}
 }
 
+std::string Room::GetUsersList()
+{
+	std::string returnMsg = "\n";
+
+	for (auto client : UsersInRoom)
+	{
+		returnMsg.append("User " + std::to_string(client->ID) + ": " + client->username);
+	}
+
+	return returnMsg;
+}
+
 Room::Room(int id)
 {
 	ID = id;
